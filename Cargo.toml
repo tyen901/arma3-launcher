@@ -1,0 +1,23 @@
+[package]
+name = "arma3-launcher"
+version = "0.9.1"
+edition = "2021"
+license = "MIT"
+description = "Rust library for launching Arma 3 with mods and custom arguments (Steam-aware, Linux/Windows)."
+keywords = ["arma3", "launcher", "steam", "proton", "mods"]
+categories = ["games", "os::unix-apis"]
+rust-version = "1.74"
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[dependencies]
+thiserror = "1.0"
+dirs-next = "2.0"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+
+[dev-dependencies]
+tempfile = "3.10"

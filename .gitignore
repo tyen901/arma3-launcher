@@ -1,0 +1,19 @@
+# Rust / Cargo
+/target/
+# If you want to ignore Cargo.lock, uncomment the next line for libraries
+# Cargo.lock
+
+# macOS
+.DS_Store
+
+# Backup files
+*~
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
