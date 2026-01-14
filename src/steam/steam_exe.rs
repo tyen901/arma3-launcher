@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+use winreg::HKEY;
 use winreg::RegKey;
 
 /// Best-effort Steam.exe detection on Windows:
@@ -39,7 +40,7 @@ pub(crate) fn detect_steam_exe() -> PathBuf {
     PathBuf::from("steam")
 }
 
-fn detect_from_registry(root: winreg::enums::HKEY) -> Option<PathBuf> {
+fn detect_from_registry(root: HKEY) -> Option<PathBuf> {
     let hk = RegKey::predef(root);
     let steam = hk.open_subkey(r"Software\Valve\Steam").ok()?;
 

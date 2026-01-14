@@ -181,24 +181,33 @@ fn build_linux_command(
             })
         }
         crate::LaunchMode::Direct => {
-            if !install.is_proton() {
-                Ok(CommandSpec {
-                    program: install.executable().to_path_buf(),
-                    args: user_args.to_vec(),
-                    cwd: working_dir
-                        .map(|p| p.to_path_buf())
-                        .or_else(|| Some(install.game_dir().to_path_buf())),
-                    env,
-                })
-            } else {
-                crate::steam::proton_direct::build_proton_direct_spec(
-                    install,
-                    user_args,
-                    env,
-                    working_dir,
-                    disable_esync,
-                )
+            if install.is_proton() {
+                #[cfg(target_os = "linux")]
+                {
+                    return crate::steam::proton_direct::build_proton_direct_spec(
+                        install,
+                        user_args,
+                        env,
+                        working_dir,
+                        disable_esync,
+                    );
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    return Err(crate::Arma3Error::Parse {
+                        message: "proton direct launch is only supported on Linux".to_string(),
+                    });
+                }
             }
+
+            Ok(CommandSpec {
+                program: install.executable().to_path_buf(),
+                args: user_args.to_vec(),
+                cwd: working_dir
+                    .map(|p| p.to_path_buf())
+                    .or_else(|| Some(install.game_dir().to_path_buf())),
+                env,
+            })
         }
     }
 }

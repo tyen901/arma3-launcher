@@ -110,6 +110,7 @@ fn escape_cfg(s: &str) -> String {
 fn launcher_full_path(path: &Path, install: &Arma3Install) -> String {
     #[cfg(target_os = "windows")]
     {
+        let _ = install;
         return path.to_string_lossy().to_string();
     }
 
