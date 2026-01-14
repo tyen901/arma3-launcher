@@ -137,6 +137,7 @@ fn build_windows_command(
     }
 }
 
+#[cfg(target_os = "linux")]
 fn build_linux_command(
     install: &Arma3Install,
     mode: crate::LaunchMode,
@@ -212,6 +213,7 @@ fn build_linux_command(
     }
 }
 
+#[cfg(target_os = "linux")]
 fn is_flatpak_steam() -> bool {
     // Stronger than just checking ~/.var/app: also respects FLATPAK_ID.
     if std::env::var_os("FLATPAK_ID").is_some() {

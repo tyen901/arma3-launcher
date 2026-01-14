@@ -123,7 +123,7 @@ fn find_executable(game_dir: &Path) -> Option<(PathBuf, InstallKind)> {
         if p.is_file() {
             return Some((p, InstallKind::WindowsNative));
         }
-        return None;
+        None
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "windows")))]
