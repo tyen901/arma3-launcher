@@ -1,5 +1,3 @@
-# README.md
-
 ## arma3-launcher
 
 A small library that:
@@ -39,3 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 * Workshop IDs require `workshop_dir` on `Arma3Install`.
 * You can override cfg path if you need a non-standard location.
 * Linux Proton “direct” launching requires Steam detection; if not found, the library returns an error.
+
+## Inspiration
+
+This library was inspired by https://github.com/muttleyxd/arma3-unix-launcher which provided a very useful reference for launching Arma 3 on Linux systems.
