@@ -3,8 +3,8 @@
 use std::path::PathBuf;
 
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
-use winreg::HKEY;
 use winreg::RegKey;
+use winreg::HKEY;
 
 /// Best-effort Steam.exe detection on Windows:
 /// - STEAM_EXE env var (full path)
