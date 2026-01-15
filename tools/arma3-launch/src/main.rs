@@ -20,18 +20,6 @@ struct Args {
     extra: Vec<String>,
 }
 
-#[cfg(target_os = "windows")]
-fn default_windows_paths() -> Vec<PathBuf> {
-    let mut v = Vec::new();
-    if let Some(program_files) = std::env::var_os("ProgramFiles(x86)") {
-        v.push(PathBuf::from(program_files).join("Steam/steamapps/common/Arma 3/arma3.exe"));
-    }
-    if let Some(program_files) = std::env::var_os("ProgramFiles") {
-        v.push(PathBuf::from(program_files).join("Steam/steamapps/common/Arma 3/arma3.exe"));
-    }
-    v
-}
-
 fn find_install_dir(provided: Option<PathBuf>) -> Option<PathBuf> {
     provided.or_else(detect_arma3_install_path)
 }
@@ -55,23 +43,7 @@ fn find_arma3_exe(provided_exe: Option<PathBuf>, install_dir: Option<PathBuf>) -
         }
     }
 
-    #[cfg(target_os = "windows")]
-    {
-        for p in default_windows_paths() {
-            if p.is_file() {
-                return Some(p);
-            }
-        }
-
-        if let Ok(steam_path) = std::env::var("STEAM") {
-            let candidate = PathBuf::from(steam_path).join("steamapps/common/Arma 3/arma3.exe");
-            if candidate.is_file() {
-                return Some(candidate);
-            }
-        }
-    }
-
-    which::which("arma3").ok().filter(|p| p.is_file())
+    None
 }
 
 fn infer_game_dir_from_exe(exe: &Path) -> Option<PathBuf> {
