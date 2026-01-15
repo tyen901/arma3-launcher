@@ -1,8 +1,7 @@
 use clap::Parser;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
-use arma3_launcher::{detect_arma3_install_path, Arma3Install};
+use arma3_launcher::{detect_arma3_install_path, Arma3Install, Arma3Launcher, LaunchMode};
 
 /// Simple standalone launcher for Arma 3 (sanity-check binary)
 #[derive(Parser)]
@@ -15,6 +14,10 @@ struct Args {
     #[arg(short, long)]
     exe: Option<PathBuf>,
 
+    /// Launch directly (bypasses Steam). On Linux Proton installs this may fail.
+    #[arg(long)]
+    direct: bool,
+
     /// Additional arguments to pass to Arma 3
     #[arg(last = true)]
     extra: Vec<String>,
@@ -24,26 +27,18 @@ fn find_install_dir(provided: Option<PathBuf>) -> Option<PathBuf> {
     provided.or_else(detect_arma3_install_path)
 }
 
-fn find_arma3_exe(provided_exe: Option<PathBuf>, install_dir: Option<PathBuf>) -> Option<PathBuf> {
+fn find_install(provided_exe: Option<PathBuf>, install_dir: Option<PathBuf>) -> Option<Arma3Install> {
     if let Some(p) = provided_exe {
-        if p.is_file() {
-            return Some(p);
+        if !p.is_file() {
+            eprintln!("Provided --exe path is not a file: {}", p.display());
+            return None;
         }
-        eprintln!("Provided --exe path is not a file: {}", p.display());
-        return None;
+        let dir = infer_game_dir_from_exe(&p)?;
+        return Arma3Install::new(dir, None::<PathBuf>).ok();
     }
 
-    if let Some(game_dir) = find_install_dir(install_dir) {
-        match Arma3Install::new(&game_dir, None::<PathBuf>) {
-            Ok(install) => return Some(install.executable().to_path_buf()),
-            Err(e) => eprintln!(
-                "Failed validating Arma 3 install dir {}: {e}",
-                game_dir.display()
-            ),
-        }
-    }
-
-    None
+    let game_dir = find_install_dir(install_dir)?;
+    Arma3Install::new(game_dir, None::<PathBuf>).ok()
 }
 
 fn infer_game_dir_from_exe(exe: &Path) -> Option<PathBuf> {
@@ -53,26 +48,39 @@ fn infer_game_dir_from_exe(exe: &Path) -> Option<PathBuf> {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    let exe = find_arma3_exe(args.exe.clone(), args.dir.clone()).ok_or_else(|| {
+    let install = find_install(args.exe.clone(), args.dir.clone()).ok_or_else(|| {
         anyhow::anyhow!(
-            "Could not locate Arma 3 executable. Provide --dir <install_dir> or --exe <path> (or set ARMA3_DIR)."
+            "Could not locate Arma 3 install. Provide --dir <install_dir> or --exe <path> (or set ARMA3_DIR)."
         )
     })?;
 
-    if args.dir.is_none() && args.exe.is_some() {
-        if let Some(dir) = infer_game_dir_from_exe(&exe) {
-            let _ = Arma3Install::new(dir, None::<PathBuf>);
+    let mode = if args.direct {
+        LaunchMode::Direct
+    } else {
+        #[cfg(target_os = "linux")]
+        {
+            LaunchMode::ThroughSteam
         }
-    }
+        #[cfg(not(target_os = "linux"))]
+        {
+            LaunchMode::Direct
+        }
+    };
 
-    println!("Launching Arma 3: {}", exe.display());
+    let launcher = Arma3Launcher::new(install)
+        .launch_mode(mode)
+        .args(args.extra);
 
-    let mut cmd = Command::new(exe);
-    if !args.extra.is_empty() {
-        cmd.args(&args.extra);
-    }
-
-    let child = cmd.spawn()?;
+    let spec = launcher.build_command()?;
+    println!(
+        "Launching Arma 3 via {}: {}",
+        match mode {
+            LaunchMode::ThroughSteam => "steam",
+            LaunchMode::Direct => "direct",
+        },
+        spec.program.display()
+    );
+    let child = spec.spawn()?;
     println!("Spawned pid: {}", child.id());
 
     Ok(())
