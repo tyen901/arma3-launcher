@@ -8,4 +8,5 @@ description = "Standalone example binary to launch Arma 3 (sanity check)."
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.54", features = ["derive"] }
+arma3-launcher = { path = "../.." }
 which = "8.0.0"
