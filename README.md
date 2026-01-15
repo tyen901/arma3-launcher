@@ -38,6 +38,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 * You can override cfg path if you need a non-standard location.
 * Linux Proton “direct” launching requires Steam detection; if not found, the library returns an error.
 
+## Tools
+
+This repo includes a small standalone binary under `tools/arma3-launch` for quick sanity checks.
+
+Run it with:
+
+```bash
+cargo run --manifest-path tools/arma3-launch/Cargo.toml -- --help
+```
+
 ## Inspiration
 
 This library was inspired by https://github.com/muttleyxd/arma3-unix-launcher which provided a very useful reference for launching Arma 3 on Linux systems.
