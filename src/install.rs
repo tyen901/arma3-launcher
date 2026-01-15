@@ -81,9 +81,15 @@ impl Arma3Install {
     /// You can override this via `Arma3Launcher::cfg_path_override`.
     pub fn default_cfg_path(&self) -> Result<PathBuf> {
         match self.kind {
-            InstallKind::LinuxProton => Ok(self.game_dir.join(
-                "../../compatdata/107410/pfx/drive_c/users/steamuser/My Documents/Arma 3/Arma3.cfg",
+            #[cfg(target_os = "linux")]
+            InstallKind::LinuxProton => Ok(crate::steam::paths::proton_cfg_path_for_game_dir(
+                &self.game_dir,
             )),
+
+            #[cfg(not(target_os = "linux"))]
+            InstallKind::LinuxProton => Err(Arma3Error::Parse {
+                message: "LinuxProton cfg path is only supported on Linux builds".to_string(),
+            }),
             InstallKind::LinuxNative => {
                 let home = home_dir()?;
                 Ok(home

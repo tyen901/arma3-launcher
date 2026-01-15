@@ -1,6 +1,8 @@
 use crate::command::CommandSpec;
 use crate::error::{Arma3Error, Result};
 use crate::install::Arma3Install;
+use crate::steam::consts::*;
+use crate::steam::paths;
 use crate::steam::steam_root;
 use crate::steam::vdf::Vdf;
 use std::ffi::OsString;
@@ -22,10 +24,10 @@ pub(crate) fn build_proton_direct_spec(
     })?;
     let vdf = Vdf::parse(&config_txt)?;
 
-    let filter = "CompatToolMapping/107410/name";
-    let mut values = vdf.values_with_filter(filter);
+    let filter = format!("CompatToolMapping/{}/name", ARMA3_APP_ID_STR);
+    let mut values = vdf.values_with_filter(&filter);
     let shortname = values.pop().ok_or_else(|| Arma3Error::SteamConfig {
-        message: "compatibility tool entry not found for appid 107410".into(),
+        message: format!("compatibility tool entry not found for appid {ARMA3_APP_ID_STR}"),
     })?;
 
     let tool_dir =
@@ -78,18 +80,19 @@ pub(crate) fn build_proton_direct_spec(
         env.push((OsString::from("LD_PRELOAD"), OsString::from(ld_preload)));
     }
 
-    let compat_data = steam_install_root_from_game_dir(install.game_dir())
-        .unwrap_or_else(|| install.game_dir().join("../../../"))
-        .join("steamapps/compatdata/107410");
+    let compat_data = paths::compatdata_dir_for_game_dir(install.game_dir());
 
-    env.push((OsString::from("SteamGameId"), OsString::from("107410")));
     env.push((
-        OsString::from("STEAM_COMPAT_DATA_PATH"),
+        OsString::from(ENV_STEAM_GAME_ID),
+        OsString::from(ARMA3_APP_ID_STR),
+    ));
+    env.push((
+        OsString::from(ENV_STEAM_COMPAT_DATA_PATH),
         OsString::from(compat_data.to_string_lossy().to_string()),
     ));
 
     if disable_esync {
-        env.push((OsString::from("PROTON_NO_ESYNC"), OsString::from("1")));
+        env.push((OsString::from(ENV_PROTON_NO_ESYNC), OsString::from("1")));
     }
 
     let mut args: Vec<OsString> = parts.into_iter().map(OsString::from).collect();
@@ -135,18 +138,6 @@ fn find_compat_tool_dir(steam_root: &Path, shortname: &str) -> Option<PathBuf> {
         return Some(system);
     }
     None
-}
-
-fn steam_install_root_from_game_dir(game_dir: &Path) -> Option<PathBuf> {
-    let common = game_dir.parent()?;
-    if common.file_name()?.to_string_lossy() != "common" {
-        return None;
-    }
-    let steamapps = common.parent()?;
-    if steamapps.file_name()?.to_string_lossy() != "steamapps" {
-        return None;
-    }
-    steamapps.parent().map(|p| p.to_path_buf())
 }
 
 fn missing_libpng12() -> bool {

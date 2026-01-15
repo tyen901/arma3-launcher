@@ -1,5 +1,6 @@
 use crate::error::{Arma3Error, Result};
 use crate::install::Arma3Install;
+use crate::steam::consts::{ARMA3_APP_ID_STR, STEAM_ARG_APPLAUNCH, STEAM_ARG_NO_LAUNCHER};
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
@@ -112,9 +113,9 @@ fn build_windows_command(
             let program = crate::steam::steam_exe::detect_steam_exe();
 
             let mut args: Vec<OsString> = vec![];
-            args.push(OsString::from("-applaunch"));
-            args.push(OsString::from("107410"));
-            args.push(OsString::from("-nolauncher"));
+            args.push(OsString::from(STEAM_ARG_APPLAUNCH));
+            args.push(OsString::from(ARMA3_APP_ID_STR));
+            args.push(OsString::from(STEAM_ARG_NO_LAUNCHER));
             args.extend_from_slice(user_args);
 
             Ok(CommandSpec {
@@ -166,9 +167,9 @@ fn build_linux_command(
                 (PathBuf::from("steam"), vec![])
             };
 
-            args.push(OsString::from("-applaunch"));
-            args.push(OsString::from("107410"));
-            args.push(OsString::from("-nolauncher"));
+            args.push(OsString::from(STEAM_ARG_APPLAUNCH));
+            args.push(OsString::from(ARMA3_APP_ID_STR));
+            args.push(OsString::from(STEAM_ARG_NO_LAUNCHER));
 
             args.extend_from_slice(user_args);
 

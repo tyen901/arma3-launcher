@@ -16,6 +16,7 @@ compile_error!("arma3-launcher currently supports Linux and Windows only.");
 
 mod cfg;
 mod command;
+mod detect;
 mod error;
 mod install;
 mod mods;
@@ -28,6 +29,7 @@ pub use crate::install::{Arma3Install, InstallKind};
 pub use crate::mods::{ModMeta, ModSpec};
 
 pub use crate::cfg::strip_cpp_class;
+pub use crate::detect::{detect_arma3_install_candidates, detect_arma3_install_path};
 pub use crate::mods::{read_mod_meta, validate_local_mod_dir};
 
 pub use crate::steam::vdf::Vdf;
