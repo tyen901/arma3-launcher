@@ -1,6 +1,6 @@
 [package]
 name = "arma3-launcher"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 license = "MIT"
 description = "Rust library for launching Arma 3 with mods and custom arguments (Steam-aware, Linux/Windows)."
@@ -15,6 +15,7 @@ missing_docs = "warn"
 [dependencies]
 thiserror = "2.0.17"
 dirs-next = "2.0.0"
+shell-words = "1.1.0"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"

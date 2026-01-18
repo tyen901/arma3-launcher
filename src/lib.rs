@@ -31,6 +31,7 @@ pub use crate::mods::{ModMeta, ModSpec};
 pub use crate::cfg::strip_cpp_class;
 pub use crate::detect::{detect_arma3_install_candidates, detect_arma3_install_path};
 pub use crate::mods::{read_mod_meta, validate_local_mod_dir};
+pub use crate::steam::paths::arma_path_arg;
 
 pub use crate::steam::vdf::Vdf;
 

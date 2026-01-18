@@ -8,6 +8,7 @@ fn parses_cpp_key_values_best_effort() {
     let d = tempdir().unwrap();
     let mod_dir = d.path().join("@ace");
     fs::create_dir_all(mod_dir.join("addons")).unwrap();
+    fs::write(mod_dir.join("addons").join("stub.pbo"), "data").unwrap();
 
     fs::write(
         mod_dir.join("mod.cpp"),

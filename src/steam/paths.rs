@@ -107,6 +107,20 @@ pub(crate) fn detect_steam_library_roots() -> Vec<PathBuf> {
     out
 }
 
+/// Convert a host path to the argument string expected by Arma.
+/// For Proton, map into `Z:\` and use Windows-style separators.
+pub fn arma_path_arg(path: &Path, is_proton: bool) -> String {
+    if is_proton {
+        let mut s = path.to_string_lossy().replace('/', "\\");
+        if path.is_absolute() {
+            s = format!("Z:{s}");
+        }
+        s
+    } else {
+        path.to_string_lossy().into_owned()
+    }
+}
+
 /// Return validated Arma 3 install dir candidates, ordered by “most likely”.
 /// - `ARMA3_DIR` env override (if valid)
 /// - Steam library roots (libraryfolders.vdf)

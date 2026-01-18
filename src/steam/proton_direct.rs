@@ -51,7 +51,9 @@ pub(crate) fn build_proton_direct_spec(
                 ),
             })?;
 
-    let mut parts = shlex_split(&cmdline);
+    let mut parts = shell_words::split(&cmdline).map_err(|e| Arma3Error::SteamConfig {
+        message: format!("failed parsing tool commandline: {e}"),
+    })?;
     if parts.is_empty() {
         return Err(Arma3Error::SteamConfig {
             message: "empty tool commandline".into(),
@@ -154,43 +156,4 @@ fn missing_libpng12() -> bool {
         "/usr/lib/x86_64-linux-gnu/libpng12.so",
     ];
     !candidates.iter().any(|p| Path::new(p).is_file())
-}
-
-fn shlex_split(s: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    let mut in_single = false;
-    let mut in_double = false;
-    let mut escape = false;
-
-    for c in s.chars() {
-        if escape {
-            cur.push(c);
-            escape = false;
-            continue;
-        }
-        if c == '\\' && in_double {
-            escape = true;
-            continue;
-        }
-        if c == '\'' && !in_double {
-            in_single = !in_single;
-            continue;
-        }
-        if c == '"' && !in_single {
-            in_double = !in_double;
-            continue;
-        }
-        if c.is_whitespace() && !in_single && !in_double {
-            if !cur.is_empty() {
-                out.push(std::mem::take(&mut cur));
-            }
-            continue;
-        }
-        cur.push(c);
-    }
-    if !cur.is_empty() {
-        out.push(cur);
-    }
-    out
 }

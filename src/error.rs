@@ -24,8 +24,8 @@ pub enum Arma3Error {
     #[error("workshop directory is required for workshop IDs but was not configured")]
     WorkshopDirMissing,
 
-    /// A mod directory is invalid (e.g., missing `addons`).
-    #[error("invalid mod directory: {path} (expected an 'addons' directory inside)")]
+    /// A mod directory is invalid (e.g., missing or empty `addons`).
+    #[error("invalid mod directory: {path} (expected a non-empty 'addons' directory inside)")]
     InvalidModDir {
         /// Mod directory path.
         path: PathBuf,

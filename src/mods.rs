@@ -34,14 +34,20 @@ impl ModMeta {
     }
 }
 
-/// Validate local mod directory (exists, contains `addons`).
+/// Validate local mod directory (exists, contains a non-empty `addons` directory).
 pub fn validate_local_mod_dir(path: &Path) -> Result<()> {
     if !path.is_dir() {
         return Err(Arma3Error::InvalidModDir {
             path: path.to_path_buf(),
         });
     }
-    if !path.join("addons").is_dir() {
+    let addons = path.join("addons");
+    if !addons.is_dir() {
+        return Err(Arma3Error::InvalidModDir {
+            path: path.to_path_buf(),
+        });
+    }
+    if fs::read_dir(&addons)?.next().is_none() {
         return Err(Arma3Error::InvalidModDir {
             path: path.to_path_buf(),
         });
