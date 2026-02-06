@@ -56,14 +56,14 @@ fn detect_from_registry(root: winreg::HKEY) -> Option<PathBuf> {
     let steam = hk.open_subkey(r"Software\Valve\Steam").ok()?;
 
     if let Ok(dir) = steam.get_value::<String, _>("SteamPath") {
-        let p = PathBuf::from(dir.trim_matches('\"'));
+        let p = PathBuf::from(dir.trim_matches('"'));
         if p.join("steamapps").is_dir() {
             return Some(p);
         }
     }
 
     if let Ok(exe) = steam.get_value::<String, _>("SteamExe") {
-        let p = PathBuf::from(exe.trim_matches('\"'));
+        let p = PathBuf::from(exe.trim_matches('"'));
         if let Some(parent) = p.parent() {
             let parent = parent.to_path_buf();
             if parent.join("steamapps").is_dir() {
@@ -75,27 +75,65 @@ fn detect_from_registry(root: winreg::HKEY) -> Option<PathBuf> {
     None
 }
 
-#[cfg(target_os = "linux")]
-pub(crate) fn linux_overlay_so() -> Option<PathBuf> {
-    let steam = detect_steam_root()?;
-    let a = steam.join("ubuntu12_64/gameoverlayrenderer.so");
-    if a.is_file() {
-        return Some(a);
+#[cfg(target_os = "windows")]
+pub(crate) fn detect_steam_exe() -> PathBuf {
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    use winreg::RegKey;
+    use winreg::HKEY;
+
+    if let Some(p) = std::env::var_os("STEAM_EXE").map(PathBuf::from) {
+        if p.is_file() {
+            return p;
+        }
     }
-    let b = steam.join("linux64/gameoverlayrenderer.so");
-    if b.is_file() {
-        return Some(b);
+
+    if let Some(p) = detect_exe_from_registry(HKEY_CURRENT_USER) {
+        return p;
     }
+    if let Some(p) = detect_exe_from_registry(HKEY_LOCAL_MACHINE) {
+        return p;
+    }
+
+    let candidates = [
+        PathBuf::from(r"C:\Program Files (x86)\Steam\steam.exe"),
+        PathBuf::from(r"C:\Program Files\Steam\steam.exe"),
+    ];
+    if let Some(p) = candidates.into_iter().find(|p| p.is_file()) {
+        return p;
+    }
+
+    PathBuf::from("steam")
+}
+
+#[cfg(target_os = "windows")]
+fn detect_exe_from_registry(root: HKEY) -> Option<PathBuf> {
+    let hk = RegKey::predef(root);
+    let steam = hk.open_subkey(r"Software\Valve\Steam").ok()?;
+
+    if let Ok(exe) = steam.get_value::<String, _>("SteamExe") {
+        let p = PathBuf::from(exe.trim_matches('"'));
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+
+    if let Ok(dir) = steam.get_value::<String, _>("SteamPath") {
+        let p = PathBuf::from(dir.trim_matches('"')).join("steam.exe");
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+
     None
 }
 
 #[cfg(target_os = "linux")]
-pub(crate) fn steam_runtime_runsh() -> Option<PathBuf> {
-    let steam = detect_steam_root()?;
-    let p = steam.join("ubuntu12_32/steam-runtime/run.sh");
-    if p.is_file() {
-        Some(p)
-    } else {
-        None
+pub(crate) fn is_flatpak_steam() -> bool {
+    if std::env::var_os("FLATPAK_ID").is_some() {
+        return true;
     }
+    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
+        return false;
+    };
+    home.join(".var/app/com.valvesoftware.Steam").is_dir()
 }

@@ -4,9 +4,10 @@ version = 3
 
 [[package]]
 name = "arma3-launcher"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "dirs-next",
+ "shell-words",
  "tempfile",
  "thiserror 2.0.17",
  "winreg",
@@ -159,6 +160,12 @@ dependencies = [
  "linux-raw-sys",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "shell-words"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6fe69c597f9c37bfeeeeeb33da3530379845f10be461a66d16d03eca2ded77"
 
 [[package]]
 name = "syn"

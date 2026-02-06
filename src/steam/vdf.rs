@@ -9,31 +9,19 @@ use std::collections::BTreeMap;
 ///
 /// Output keys are stored as `Path/To/Key`
 #[derive(Debug, Default, Clone)]
-pub struct Vdf {
-    /// Flattened key/value store.
-    pub kv: BTreeMap<String, String>,
+pub(crate) struct Vdf {
+    pub(crate) kv: BTreeMap<String, String>,
 }
 
 impl Vdf {
-    /// Parse VDF from text.
-    pub fn parse(text: &str) -> Result<Self> {
+    pub(crate) fn parse(text: &str) -> Result<Self> {
         let mut p = Parser::new(text);
         p.parse()?;
         Ok(Self { kv: p.out })
     }
 
-    /// Get all values whose key contains `filter`.
-    pub fn values_with_filter(&self, filter: &str) -> Vec<String> {
-        self.kv
-            .iter()
-            .filter_map(|(k, v)| {
-                if k.contains(filter) {
-                    Some(v.clone())
-                } else {
-                    None
-                }
-            })
-            .collect()
+    pub(crate) fn get(&self, key: &str) -> Option<&String> {
+        self.kv.get(key)
     }
 }
 
@@ -64,23 +52,19 @@ impl<'a> Parser<'a> {
                     self.skip_ws();
                     match self.peek_char() {
                         Some(b'"') => {
-                            // key-value
                             let val = self.read_quoted()?;
                             self.add_kv(tok, val);
                         }
                         Some(b'{') => {
-                            // key -> object
                             self.i += 1;
                             self.stack.push(tok);
                         }
                         Some(b'}') => {
-                            // stray close; treat as pop then keep token as pending key
                             self.i += 1;
                             self.pop_stack();
                             self.pending_key = Some(tok);
                         }
                         _ => {
-                            // Might be a bare brace or weird formatting; store as pending key.
                             self.pending_key = Some(tok);
                         }
                     }
@@ -96,7 +80,6 @@ impl<'a> Parser<'a> {
                     self.pop_stack();
                 }
                 _ => {
-                    // Unknown token; skip char.
                     self.i += 1;
                 }
             }
@@ -141,7 +124,7 @@ impl<'a> Parser<'a> {
                 message: "expected quoted string".into(),
             });
         }
-        self.i += 1; // skip opening quote
+        self.i += 1;
         let mut out = Vec::new();
         let mut escape = false;
 
@@ -168,5 +151,41 @@ impl<'a> Parser<'a> {
         }
 
         Ok(String::from_utf8(out)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_basic_vdf() {
+        let txt = r#"
+"InstallConfigStore"
+{
+  "Software"
+  {
+    "Valve"
+    {
+      "Steam"
+      {
+        "CompatToolMapping"
+        {
+          "107410"
+          {
+            "name" "GE-Proton"
+          }
+        }
+      }
+    }
+  }
+}
+"#;
+
+        let vdf = Vdf::parse(txt).unwrap();
+        let val = vdf
+            .get("InstallConfigStore/Software/Valve/Steam/CompatToolMapping/107410/name")
+            .unwrap();
+        assert_eq!(val, "GE-Proton");
     }
 }

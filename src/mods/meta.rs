@@ -1,28 +1,17 @@
-use crate::error::{Arma3Error, Result};
+use crate::error::Result;
+use crate::mods::validate::validate_local_mod_dir;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-/// A mod reference.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ModSpec {
-    /// Local mod directory (must contain an `addons` directory).
-    Local(PathBuf),
-    /// Workshop mod ID (requires `workshop_dir` on `Arma3Install`).
-    WorkshopId(u64),
-}
-
-/// Parsed metadata for a mod (best-effort).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ModMeta {
-    /// Key-value data parsed from `*.cpp` files inside the mod directory.
-    pub kv: BTreeMap<String, String>,
+pub(crate) struct ModMeta {
+    pub(crate) kv: BTreeMap<String, String>,
 }
 
 impl ModMeta {
-    /// Best-effort name resolution similar to common Arma mod configs.
-    pub fn name_or(&self, fallback: &str) -> String {
+    pub(crate) fn name_or(&self, fallback: &str) -> String {
         for k in ["name", "dir", "tooltip", "publishedid"] {
             if let Some(v) = self.kv.get(k) {
                 if !v.trim().is_empty() {
@@ -34,29 +23,7 @@ impl ModMeta {
     }
 }
 
-/// Validate local mod directory (exists, contains a non-empty `addons` directory).
-pub fn validate_local_mod_dir(path: &Path) -> Result<()> {
-    if !path.is_dir() {
-        return Err(Arma3Error::InvalidModDir {
-            path: path.to_path_buf(),
-        });
-    }
-    let addons = path.join("addons");
-    if !addons.is_dir() {
-        return Err(Arma3Error::InvalidModDir {
-            path: path.to_path_buf(),
-        });
-    }
-    if fs::read_dir(&addons)?.next().is_none() {
-        return Err(Arma3Error::InvalidModDir {
-            path: path.to_path_buf(),
-        });
-    }
-    Ok(())
-}
-
-/// Parse mod metadata from `*.cpp` files in the mod directory
-pub fn read_mod_meta(mod_dir: &Path) -> Result<ModMeta> {
+pub(crate) fn read_mod_meta(mod_dir: &Path) -> Result<ModMeta> {
     validate_local_mod_dir(mod_dir)?;
     let mut meta = ModMeta::default();
 
@@ -69,7 +36,6 @@ pub fn read_mod_meta(mod_dir: &Path) -> Result<ModMeta> {
         }
     }
 
-    // If workshop id is missing, a common fallback is the directory name.
     if !meta.kv.contains_key("publishedid") {
         if let Some(name) = mod_dir.file_name().and_then(|s| s.to_str()) {
             meta.kv.insert("publishedid".into(), name.to_string());
@@ -79,27 +45,21 @@ pub fn read_mod_meta(mod_dir: &Path) -> Result<ModMeta> {
     Ok(meta)
 }
 
-/// Parse `key="value";` and `key=value;` patterns in a tolerant way.
-/// This is not a full C++ parser; it’s tuned for typical Arma mod config snippets.
 fn parse_cpp_assignments(text: &str, out: &mut BTreeMap<String, String>) {
-    // Strip block and line comments while respecting quotes.
     let stripped = strip_comments(text);
 
-    // Split into statements by ';' outside quotes.
     for stmt in split_outside_quotes(&stripped, ';') {
         let stmt = stmt.trim();
         if stmt.is_empty() {
             continue;
         }
-        // Find '=' outside quotes.
         if let Some(eq) = find_outside_quotes(stmt, '=') {
             let (k, v) = stmt.split_at(eq);
             let key = k.trim();
-            let mut val = v[1..].trim(); // skip '='
+            let mut val = v[1..].trim();
             if key.is_empty() || val.is_empty() {
                 continue;
             }
-            // Drop surrounding quotes if present.
             val = val.trim_matches('"');
             out.entry(key.to_string())
                 .or_insert_with(|| val.to_string());
@@ -124,7 +84,6 @@ fn strip_comments(s: &str) -> String {
         }
 
         if !in_str {
-            // line comment //
             if c == '/' && i + 1 < bytes.len() && bytes[i + 1] as char == '/' {
                 i += 2;
                 while i < bytes.len() && (bytes[i] as char) != '\n' {
@@ -132,7 +91,6 @@ fn strip_comments(s: &str) -> String {
                 }
                 continue;
             }
-            // block comment /* ... */
             if c == '/' && i + 1 < bytes.len() && bytes[i + 1] as char == '*' {
                 i += 2;
                 while i + 1 < bytes.len() {
@@ -187,4 +145,35 @@ fn find_outside_quotes(s: &str, needle: char) -> Option<usize> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn parses_cpp_key_values_best_effort() {
+        let d = tempdir().unwrap();
+        let mod_dir = d.path().join("@ace");
+        fs::create_dir_all(mod_dir.join("addons")).unwrap();
+        fs::write(mod_dir.join("addons").join("stub.pbo"), "data").unwrap();
+
+        fs::write(
+            mod_dir.join("mod.cpp"),
+            r#"
+            // comment
+            name = "ACE3";
+            tooltip="ACE Tooltip";
+            /* block comment */ publishedid = "463939057";
+            "#,
+        )
+        .unwrap();
+
+        let meta = read_mod_meta(&mod_dir).unwrap();
+        assert_eq!(meta.kv.get("name").unwrap(), "ACE3");
+        assert_eq!(meta.kv.get("tooltip").unwrap(), "ACE Tooltip");
+        assert_eq!(meta.kv.get("publishedid").unwrap(), "463939057");
+    }
 }

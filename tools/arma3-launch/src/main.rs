@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::{Path, PathBuf};
 
-use arma3_launcher::{detect_arma3_install_path, Arma3Install, Arma3Launcher, LaunchMode};
+use arma3_launcher::{detect_best_install, Arma3Install, LaunchMode, Launcher};
 
 /// Simple standalone launcher for Arma 3 (sanity-check binary)
 #[derive(Parser)]
@@ -23,10 +23,6 @@ struct Args {
     extra: Vec<String>,
 }
 
-fn find_install_dir(provided: Option<PathBuf>) -> Option<PathBuf> {
-    provided.or_else(detect_arma3_install_path)
-}
-
 fn find_install(provided_exe: Option<PathBuf>, install_dir: Option<PathBuf>) -> Option<Arma3Install> {
     if let Some(p) = provided_exe {
         if !p.is_file() {
@@ -34,11 +30,14 @@ fn find_install(provided_exe: Option<PathBuf>, install_dir: Option<PathBuf>) -> 
             return None;
         }
         let dir = infer_game_dir_from_exe(&p)?;
-        return Arma3Install::new(dir, None::<PathBuf>).ok();
+        return Arma3Install::new(dir).ok();
     }
 
-    let game_dir = find_install_dir(install_dir)?;
-    Arma3Install::new(game_dir, None::<PathBuf>).ok()
+    if let Some(dir) = install_dir {
+        return Arma3Install::new(dir).ok();
+    }
+
+    detect_best_install()
 }
 
 fn infer_game_dir_from_exe(exe: &Path) -> Option<PathBuf> {
@@ -67,20 +66,18 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let launcher = Arma3Launcher::new(install)
-        .launch_mode(mode)
-        .args(args.extra);
+    let launcher = Launcher::new(install).launch_mode(mode).args(args.extra);
 
-    let spec = launcher.build_command()?;
+    let plan = launcher.plan()?;
     println!(
         "Launching Arma 3 via {}: {}",
         match mode {
             LaunchMode::ThroughSteam => "steam",
             LaunchMode::Direct => "direct",
         },
-        spec.program.display()
+        plan.program().display()
     );
-    let child = spec.spawn()?;
+    let child = plan.spawn()?;
     println!("Spawned pid: {}", child.id());
 
     Ok(())
