@@ -2,7 +2,6 @@
 
 A small library that:
 - Validates an Arma 3 install directory
-- Builds a `ModLauncherList` section in `Arma3.cfg` for enabled local mods
 - Launches Arma 3 with user-provided arguments and environment variables
 - Supports Linux and Windows launch styles similar to common Steam setups
 

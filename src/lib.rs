@@ -3,7 +3,6 @@
 
 Core capabilities:
 - Validate an Arma 3 installation directory
-- Generate a `ModLauncherList` section in `Arma3.cfg` based on enabled mods
 - Launch via Steam (indirect) or direct execution
 
 Supported platforms:
@@ -14,7 +13,6 @@ Supported platforms:
 #[cfg(not(any(target_os = "linux", target_os = "windows")))]
 compile_error!("arma3-launcher currently supports Linux and Windows only.");
 
-mod cfg;
 mod error;
 mod install;
 mod launch;
@@ -22,7 +20,6 @@ mod mods;
 mod platform;
 mod steam;
 
-pub use crate::cfg::CfgMode;
 pub use crate::error::{Arma3Error, Result};
 pub use crate::install::{detect_best_install, detect_install_candidates};
 pub use crate::install::{Arma3Install, InstallKind};

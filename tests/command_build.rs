@@ -1,4 +1,4 @@
-//! Integration tests for planning and config writing.
+//! Integration tests for planning.
 use arma3_launcher::{Arma3Install, LaunchMode, Launcher, LocalMod, ModSet};
 use std::fs;
 use tempfile::tempdir;
@@ -16,11 +16,8 @@ fn builds_through_steam_plan() {
     fs::write(game.join(exe), b"").unwrap();
 
     let install = Arma3Install::new(&game).unwrap();
-    let cfg_path = d.path().join("Arma3.cfg");
-
     let launcher = Launcher::new(install)
         .launch_mode(LaunchMode::ThroughSteam)
-        .cfg_path_override(&cfg_path)
         .arg("-noSplash");
 
     let plan = launcher.plan().unwrap();
@@ -32,7 +29,7 @@ fn builds_through_steam_plan() {
 }
 
 #[test]
-fn writes_cfg_for_enabled_mods() {
+fn adds_mod_arg_when_missing() {
     let d = tempdir().unwrap();
     let game = d.path().join("Arma 3");
     fs::create_dir_all(&game).unwrap();
@@ -49,17 +46,17 @@ fn writes_cfg_for_enabled_mods() {
     fs::write(mod_dir.join("mod.cpp"), r#"name="My Mod";"#).unwrap();
 
     let install = Arma3Install::new(&game).unwrap();
-    let cfg_path = d.path().join("Arma3.cfg");
 
     let mut mods = ModSet::new();
     mods.push(LocalMod::new(mod_dir).unwrap());
 
-    let launcher = Launcher::new(install)
-        .cfg_path_override(&cfg_path)
-        .mods(mods);
+    let launcher = Launcher::new(install).mods(mods);
 
-    let _plan = launcher.plan().unwrap();
-    let text = fs::read_to_string(cfg_path).unwrap();
-    assert!(text.contains("class ModLauncherList"));
-    assert!(text.contains("My Mod"));
+    let plan = launcher.plan().unwrap();
+    let mod_arg = plan
+        .args()
+        .iter()
+        .map(|a| a.to_string_lossy())
+        .find(|a| a.starts_with("-mod="));
+    assert!(mod_arg.is_some(), "expected -mod= argument to be added");
 }

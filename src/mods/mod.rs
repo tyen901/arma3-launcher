@@ -1,10 +1,8 @@
 use crate::error::Result;
 use std::path::{Path, PathBuf};
 
-mod meta;
 mod validate;
 
-pub(crate) use meta::read_mod_meta;
 use validate::validate_local_mod_dir;
 
 /// A validated local mod directory.

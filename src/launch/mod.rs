@@ -1,9 +1,9 @@
-use crate::cfg::{write_cfg, CfgMode};
 use crate::error::Result;
 use crate::install::Arma3Install;
 use crate::launch::backend::{Backend, BackendParams};
 use crate::launch::plan::CommandSpec;
 use crate::mods::{LocalMod, ModSet};
+use crate::platform::path::arma_path_string;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
@@ -27,15 +27,9 @@ pub enum LaunchMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchPlan {
     command: CommandSpec,
-    cfg_path: PathBuf,
 }
 
 impl LaunchPlan {
-    /// Path to the cfg written for this plan.
-    pub fn cfg_path(&self) -> &Path {
-        &self.cfg_path
-    }
-
     /// Executable to run.
     pub fn program(&self) -> &Path {
         &self.command.program
@@ -68,8 +62,6 @@ pub struct Launcher {
     install: Arma3Install,
     launch_mode: LaunchMode,
     disable_esync: bool,
-    cfg_mode: CfgMode,
-    cfg_override: Option<PathBuf>,
     mods: ModSet,
     args: Vec<OsString>,
     env: EnvVars,
@@ -83,8 +75,6 @@ impl Launcher {
             install,
             launch_mode: LaunchMode::default(),
             disable_esync: false,
-            cfg_mode: CfgMode::MergeOrCreate,
-            cfg_override: None,
             mods: ModSet::new(),
             args: Vec::new(),
             env: EnvVars::default(),
@@ -102,18 +92,6 @@ impl Launcher {
     /// On Windows and on ThroughSteam, this is effectively a no-op.
     pub fn disable_esync(mut self, value: bool) -> Self {
         self.disable_esync = value;
-        self
-    }
-
-    /// Control how `Arma3.cfg` is updated.
-    pub fn cfg_mode(mut self, mode: CfgMode) -> Self {
-        self.cfg_mode = mode;
-        self
-    }
-
-    /// Override the cfg path used for writing `ModLauncherList`.
-    pub fn cfg_path_override(mut self, path: impl Into<PathBuf>) -> Self {
-        self.cfg_override = Some(path.into());
         self
     }
 
@@ -185,21 +163,13 @@ impl Launcher {
         &self.install
     }
 
-    /// Compute the cfg path used for writing.
-    pub fn cfg_path(&self) -> Result<PathBuf> {
-        if let Some(p) = &self.cfg_override {
-            return Ok(p.clone());
-        }
-        self.install.default_cfg_path()
-    }
-
-    /// Build the plan that would be executed (writes cfg, does not spawn).
+    /// Build the plan that would be executed.
     pub fn plan(&self) -> Result<LaunchPlan> {
-        let cfg_path = self.write_cfg()?;
+        let user_args = self.args_with_mods();
 
         let params = BackendParams {
             install: &self.install,
-            user_args: &self.args,
+            user_args: &user_args,
             user_env: &self.env,
             working_dir: self.working_dir.as_deref(),
             disable_esync: self.disable_esync,
@@ -216,7 +186,7 @@ impl Launcher {
             }
         };
 
-        Ok(LaunchPlan { command, cfg_path })
+        Ok(LaunchPlan { command })
     }
 
     /// Spawn the game process and return the `Child`.
@@ -224,9 +194,27 @@ impl Launcher {
         self.plan()?.spawn()
     }
 
-    fn write_cfg(&self) -> Result<PathBuf> {
-        let cfg_path = self.cfg_path()?;
-        write_cfg(&cfg_path, self.cfg_mode, &self.install, &self.mods)?;
-        Ok(cfg_path)
+    fn args_with_mods(&self) -> Vec<OsString> {
+        let mut args = self.args.clone();
+        if self.mods.is_empty() {
+            return args;
+        }
+
+        let has_mods_arg = args.iter().any(|a| {
+            let s = a.to_string_lossy();
+            s.starts_with("-mod=") || s.starts_with("-mods=")
+        });
+        if has_mods_arg {
+            return args;
+        }
+
+        let mod_list = self
+            .mods
+            .iter()
+            .map(|m| arma_path_string(m.path(), self.install.is_proton()))
+            .collect::<Vec<_>>()
+            .join(";");
+        args.push(OsString::from(format!("-mod={mod_list}")));
+        args
     }
 }

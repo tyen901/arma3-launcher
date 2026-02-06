@@ -137,3 +137,37 @@ pub(crate) fn is_flatpak_steam() -> bool {
     };
     home.join(".var/app/com.valvesoftware.Steam").is_dir()
 }
+
+#[cfg(target_os = "linux")]
+pub(crate) fn detect_steam_exe() -> PathBuf {
+    if let Some(p) = std::env::var_os("STEAM_EXE").map(PathBuf::from) {
+        if p.is_file() {
+            return p;
+        }
+    }
+
+    if let Some(root) = detect_steam_root() {
+        let candidates = [
+            root.join("steam.sh"),
+            root.join("steam"),
+            root.join("steam-runtime"),
+        ];
+        if let Some(p) = candidates.into_iter().find(|p| p.is_file()) {
+            return p;
+        }
+    }
+
+    let candidates = [
+        PathBuf::from("/usr/bin/steam"),
+        PathBuf::from("/usr/bin/steam-runtime"),
+        PathBuf::from("/usr/lib/steam/steam"),
+        PathBuf::from("/usr/lib/steam/steam.sh"),
+        PathBuf::from("/usr/lib64/steam/steam"),
+        PathBuf::from("/usr/lib64/steam/steam.sh"),
+    ];
+    if let Some(p) = candidates.into_iter().find(|p| p.is_file()) {
+        return p;
+    }
+
+    PathBuf::from("steam")
+}

@@ -23,7 +23,8 @@ impl Backend for SteamBackend {
                 ],
             )
         } else {
-            (PathBuf::from("steam"), vec![])
+            let exe = crate::steam::detect::detect_steam_exe();
+            (exe, vec![])
         };
 
         #[cfg(target_os = "windows")]
